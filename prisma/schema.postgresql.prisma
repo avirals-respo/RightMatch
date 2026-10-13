@@ -1,0 +1,272 @@
+// Production PostgreSQL Prisma Schema for Vercel / Neon / Supabase deployment
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  role         String        @default("CANDIDATE")
+  status       String        @default("ACTIVE")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  candidateProfile    CandidateProfile?
+  organizationMembers OrganizationMember[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  applicationNotes    ApplicationNote[]
+}
+
+model CandidateProfile {
+  id                       String            @id @default(uuid())
+  userId                   String            @unique
+  user                     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName                 String
+  headline                 String?
+  bio                      String?
+  avatarUrl                String?
+  city                     String?
+  country                  String?           @default("India")
+  status                   String            @default("STUDENT")
+  primaryRole              String?
+  yearsExperience          Float             @default(0)
+  availabilityHoursPerWeek Int               @default(20)
+  startDate                String            @default("Immediate")
+  workArrangement          String            @default("ANY")
+  expectedCompensation     String?
+  githubUrl                String?
+  linkedinUrl              String?
+  portfolioUrl             String?
+  twitterUrl               String?
+  resumeUrl                String?
+  visibility               String            @default("PUBLIC")
+  onboardingCompleted      Boolean           @default(false)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+
+  skills             CandidateSkill[]
+  projects           Project[]
+  education          Education[]
+  workExperience     WorkExperience[]
+  applications       Application[]
+  savedOpportunities SavedOpportunity[]
+  savedByOrgs        SavedCandidate[]
+}
+
+model CandidateSkill {
+  id          String           @id @default(uuid())
+  candidateId String
+  candidate   CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  proficiency String           @default("INTERMEDIATE")
+
+  @@index([slug])
+  @@index([candidateId])
+}
+
+model Project {
+  id          String           @id @default(uuid())
+  candidateId String
+  candidate   CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  liveUrl     String?
+  repoUrl     String?
+  skillsUsed  String?
+  featured    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([candidateId])
+}
+
+model Education {
+  id           String           @id @default(uuid())
+  candidateId  String
+  candidate    CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  institution  String
+  degree       String
+  fieldOfStudy String?
+  startYear    Int?
+  endYear      Int?
+
+  @@index([candidateId])
+}
+
+model WorkExperience {
+  id          String           @id @default(uuid())
+  candidateId String
+  candidate   CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  company     String
+  roleTitle   String
+  description String?
+  startDate   String?
+  endDate     String?
+  isCurrent   Boolean          @default(false)
+
+  @@index([candidateId])
+}
+
+model Organization {
+  id          String               @id @default(uuid())
+  name        String
+  slug        String               @unique
+  logoUrl     String?
+  website     String?
+  industry    String?
+  size        String?
+  description String?
+  location    String?
+  verified    Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  members          OrganizationMember[]
+  opportunities    Opportunity[]
+  savedCandidates  SavedCandidate[]
+}
+
+model OrganizationMember {
+  id        String       @id @default(uuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String       @default("RECRUITER")
+  createdAt DateTime     @default(now())
+
+  @@unique([orgId, userId])
+}
+
+model Opportunity {
+  id                  String             @id @default(uuid())
+  orgId               String
+  org                 Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  title               String
+  slug                String             @unique
+  category            String             @default("INTERNSHIP")
+  description         String
+  responsibilities    String?
+  eligibilityCriteria String?
+  workArrangement     String             @default("REMOTE")
+  location            String             @default("Remote")
+  hoursPerWeekMin     Int                @default(15)
+  compensationType    String             @default("STIPEND")
+  compensationAmount  String?
+  duration            String?            @default("3 months")
+  openingsCount       Int                @default(1)
+  deadline            DateTime?
+  status              String             @default("PUBLISHED")
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  skills             OpportunitySkill[]
+  applications       Application[]
+  savedOpportunities SavedOpportunity[]
+
+  @@index([status])
+  @@index([orgId])
+  @@index([category])
+}
+
+model OpportunitySkill {
+  id            String      @id @default(uuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  name          String
+  slug          String
+  isMandatory   Boolean     @default(true)
+
+  @@index([slug])
+  @@index([opportunityId])
+}
+
+model Application {
+  id                      String           @id @default(uuid())
+  opportunityId           String
+  opportunity             Opportunity      @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  candidateId             String
+  candidate               CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  status                  String           @default("SUBMITTED")
+  pitch                   String?
+  portfolioHighlight      String?
+  matchScoreAtApplication Int?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  notes ApplicationNote[]
+
+  @@unique([opportunityId, candidateId])
+  @@index([status])
+}
+
+model ApplicationNote {
+  id            String      @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content       String
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId])
+}
+
+model SavedOpportunity {
+  id            String           @id @default(uuid())
+  candidateId   String
+  candidate     CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  opportunityId String
+  opportunity   Opportunity      @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  createdAt     DateTime         @default(now())
+
+  @@unique([candidateId, opportunityId])
+}
+
+model SavedCandidate {
+  id          String           @id @default(uuid())
+  orgId       String
+  org         Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+
+  @@unique([orgId, candidateId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("SYSTEM")
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String?
+  targetId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([targetType, targetId])
+}
