@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import {
   Sparkles,
   ArrowRight,
@@ -11,34 +12,60 @@ import {
   Layers,
   FileCheck,
   Cpu,
+  Users,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+type OpportunityItem = Prisma.OpportunityGetPayload<{
+  include: { org: true; skills: true };
+}>;
+
+type TalentProfileItem = Prisma.CandidateProfileGetPayload<{
+  include: { skills: true; projects: true };
+}>;
 
 export default async function HomePage() {
   // Fetch real featured opportunities from database
-  const opportunities = await db.opportunity.findMany({
-    where: { status: 'PUBLISHED' },
-    include: {
-      org: true,
-      skills: true,
-    },
-    take: 3,
-    orderBy: { createdAt: 'desc' },
-  });
+  let opportunities: OpportunityItem[] = [];
+  try {
+    opportunities = await db.opportunity.findMany({
+      where: { status: 'PUBLISHED' },
+      include: {
+        org: true,
+        skills: true,
+      },
+      take: 3,
+      orderBy: { createdAt: 'desc' },
+    });
+  } catch (error) {
+    console.error(
+      '[RightMatch DB Error] Failed to load opportunities for homepage:',
+      error instanceof Error ? error.message : 'Database unavailable'
+    );
+  }
 
   // Fetch real verified talent profiles
-  const talentProfiles = await db.candidateProfile.findMany({
-    where: {
-      visibility: 'PUBLIC',
-      user: { status: 'ACTIVE' },
-    },
-    include: {
-      skills: { take: 3 },
-      projects: { take: 1 },
-    },
-    take: 3,
-  });
+  let talentProfiles: TalentProfileItem[] = [];
+  try {
+    talentProfiles = await db.candidateProfile.findMany({
+      where: {
+        visibility: 'PUBLIC',
+        user: { status: 'ACTIVE' },
+      },
+      include: {
+        skills: { take: 3 },
+        projects: { take: 1 },
+      },
+      take: 3,
+    });
+  } catch (error) {
+    console.error(
+      '[RightMatch DB Error] Failed to load talent profiles for homepage:',
+      error instanceof Error ? error.message : 'Database unavailable'
+    );
+  }
 
   return (
     <div style={{ paddingBottom: '6rem' }}>
@@ -397,7 +424,39 @@ export default async function HomePage() {
               gap: '1.5rem',
             }}
           >
-            {opportunities.map((opp) => (
+            {opportunities.length === 0 ? (
+              <div
+                className="card"
+                style={{
+                  gridColumn: '1 / -1',
+                  textAlign: 'center',
+                  padding: '3rem 1.5rem',
+                  background: 'var(--bg-canvas)',
+                }}
+              >
+                <Briefcase
+                  size={40}
+                  style={{ margin: '0 auto 1rem', color: 'var(--text-muted)', opacity: 0.6 }}
+                />
+                <h3 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>
+                  No published opportunities yet
+                </h3>
+                <p
+                  style={{
+                    color: 'var(--text-secondary)',
+                    fontSize: '0.875rem',
+                    maxWidth: '420px',
+                    margin: '0 auto 1.25rem',
+                  }}
+                >
+                  Be the first startup or company to post an internship, project, or role on RightMatch.
+                </p>
+                <Link href="/register?role=COMPANY" className="btn btn-primary btn-sm">
+                  Post an Opportunity
+                </Link>
+              </div>
+            ) : (
+              opportunities.map((opp) => (
               <div key={opp.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.875rem' }}>
                   <div>
@@ -470,7 +529,8 @@ export default async function HomePage() {
                   </Link>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       </section>
@@ -504,7 +564,39 @@ export default async function HomePage() {
               gap: '1.5rem',
             }}
           >
-            {talentProfiles.map((talent) => (
+            {talentProfiles.length === 0 ? (
+              <div
+                className="card"
+                style={{
+                  gridColumn: '1 / -1',
+                  textAlign: 'center',
+                  padding: '3rem 1.5rem',
+                  background: 'var(--bg-surface)',
+                }}
+              >
+                <Users
+                  size={40}
+                  style={{ margin: '0 auto 1rem', color: 'var(--text-muted)', opacity: 0.6 }}
+                />
+                <h3 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>
+                  No verified builder profiles published yet
+                </h3>
+                <p
+                  style={{
+                    color: 'var(--text-secondary)',
+                    fontSize: '0.875rem',
+                    maxWidth: '420px',
+                    margin: '0 auto 1.25rem',
+                  }}
+                >
+                  Create your profile to showcase verified proof of work, projects, and skills.
+                </p>
+                <Link href="/register?role=CANDIDATE" className="btn btn-accent btn-sm">
+                  Join as Talent
+                </Link>
+              </div>
+            ) : (
+              talentProfiles.map((talent) => (
               <div key={talent.id} className="card" style={{ background: 'var(--bg-surface)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '0.875rem' }}>
                   <div
@@ -574,7 +666,8 @@ export default async function HomePage() {
                   View Verified Profile
                 </Link>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       </section>

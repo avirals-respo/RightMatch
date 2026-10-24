@@ -127,7 +127,7 @@ export function evaluateMatch(
   const preferredOppSkills = opportunity.skills.filter((s) => !s.isMandatory);
 
   let requiredSkillPoints = 0;
-  let maxRequiredSkillPoints = Math.max(requiredOppSkills.length, 1);
+  const maxRequiredSkillPoints = Math.max(requiredOppSkills.length, 1);
 
   for (const req of requiredOppSkills) {
     const slug = normalizeSkillSlug(req.slug || req.name);

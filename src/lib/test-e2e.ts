@@ -48,13 +48,24 @@ async function testE2E() {
   }
   console.log('✅ Recruiter logged in successfully. Org:', recLoginData.user.organization?.name);
 
+interface OppWithCount {
+  id: string;
+  title: string;
+  _count: { applications: number };
+}
+
+interface ApplicationItem {
+  id: string;
+  status: string;
+}
+
   // 4. Recruiter fetches opportunities & applicants
   console.log('\n4. Testing Recruiter Opportunities & Pipeline...');
   const oppsRes = await fetch(`${BASE_URL}/api/company/opportunities`, {
     headers: { Cookie: recCookie },
   });
   const oppsData = await oppsRes.json();
-  const targetOpp = oppsData.opportunities.find((o: any) => o._count.applications > 0) || oppsData.opportunities[0];
+  const targetOpp = (oppsData.opportunities as OppWithCount[]).find((o) => o._count.applications > 0) || oppsData.opportunities[0];
   console.log(`✅ Loaded ${oppsData.opportunities.length} organization opportunities.`);
   console.log(`   Inspecting pipeline for: "${targetOpp.title}" (ID: ${targetOpp.id})`);
 
@@ -96,7 +107,10 @@ async function testE2E() {
     headers: { Cookie: candCookie },
   });
   const candAppsData = await candAppsRes.json();
-  const updatedCandApp = candAppsData.applications.find((a: any) => a.id === app.id);
+  const updatedCandApp = (candAppsData.applications as ApplicationItem[]).find((a) => a.id === app.id);
+  if (!updatedCandApp) {
+    throw new Error('Updated candidate application not found in candidate applications list');
+  }
   console.log('✅ Candidate sees real-time updated status:', updatedCandApp.status);
 
   const notifRes = await fetch(`${BASE_URL}/api/notifications`, {
