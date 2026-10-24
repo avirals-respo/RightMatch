@@ -115,6 +115,9 @@ async function testE2E() {
   });
   const adminLoginData = await adminLoginRes.json();
   const adminCookie = adminLoginRes.headers.get('set-cookie')?.split(';')[0];
+  if (!adminLoginRes.ok || !adminCookie) {
+    throw new Error(`Admin login failed: ${JSON.stringify(adminLoginData)}`);
+  }
 
   const metricsRes = await fetch(`${BASE_URL}/api/admin/metrics`, {
     headers: { Cookie: adminCookie },
