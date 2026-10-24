@@ -13,6 +13,8 @@ import {
   Cpu,
 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   // Fetch real featured opportunities from database
   const opportunities = await db.opportunity.findMany({
