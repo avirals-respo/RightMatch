@@ -1,7 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 
-const prisma = new PrismaClient();
+const dbUrl =
+  process.env.DATABASE_URL ||
+  process.env.Prisma_Database_DATABASE_URL ||
+  process.env.Prisma_Database_POSTGRES_URL;
+
+if (!process.env.DATABASE_URL && dbUrl) {
+  process.env.DATABASE_URL = dbUrl;
+}
+
+const prisma = new PrismaClient({
+  datasources: dbUrl ? { db: { url: dbUrl } } : undefined,
+});
 
 // Safe password hashing using PBKDF2 (SHA-512)
 export function hashPassword(password: string): string {
@@ -10,25 +21,13 @@ export function hashPassword(password: string): string {
 }
 
 async function main() {
-  console.log('Seeding database with realistic platform records...');
+  const existingCount = await prisma.user.count();
+  if (existingCount > 0) {
+    console.log(`[RightMatch Seed] Database already contains ${existingCount} users. Skipping seed to preserve data.`);
+    return;
+  }
 
-  // Clean existing tables (in order of relations)
-  await prisma.auditLog.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.savedOpportunity.deleteMany();
-  await prisma.savedCandidate.deleteMany();
-  await prisma.applicationNote.deleteMany();
-  await prisma.application.deleteMany();
-  await prisma.opportunitySkill.deleteMany();
-  await prisma.opportunity.deleteMany();
-  await prisma.organizationMember.deleteMany();
-  await prisma.organization.deleteMany();
-  await prisma.candidateSkill.deleteMany();
-  await prisma.project.deleteMany();
-  await prisma.education.deleteMany();
-  await prisma.workExperience.deleteMany();
-  await prisma.candidateProfile.deleteMany();
-  await prisma.user.deleteMany();
+  console.log('[RightMatch Seed] Database is empty. Seeding initial demo accounts & records...');
 
   const defaultPasswordHash = hashPassword('Password123!');
 
